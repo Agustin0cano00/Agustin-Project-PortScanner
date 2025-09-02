@@ -1,37 +1,49 @@
 import socket
 from common_ports import ports_and_services
 
-def get_open_ports(target: str, port_range: list, verb=False):
-    
-    # Validating the given target
-    try:
-        ip_addr = socket.gethostbyaddr(target)
-    except socket.gaierror:
-        if target[0].isalpha():
-            return "Error: Invalid IP address"
-        else:
-            return "Error: Invalid hostname"
-    
+
+def get_open_ports(target, port_range, verbose=False):
     open_ports = []
-    
-    # Searching for open ports
-    for port in range(port_range[0], port_range[1]):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Ipv4
-        if s.connect_ex((ip_addr, port)) == 0:
+
+    # Resolver target a IP
+    try:
+        ip = socket.gethostbyname(target)
+    except socket.gaierror:
+        # Si es dominio inválido
+        if not target.replace(".", "").isdigit():
+            return "Error: Invalid hostname"
+        else:
+            return "Error: Invalid IP address"
+
+    # Intentar obtener el hostname si es una IP válida
+    hostname = None
+    try:
+        hostname = socket.gethostbyaddr(ip)[0]
+    except Exception:
+        pass
+
+    # Escaneo de puertos
+    for port in range(port_range[0], port_range[1] + 1):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        result = sock.connect_ex((ip, port))
+        if result == 0:
             open_ports.append(port)
-        s.close    
-    
-    if verb == True:
-        ports = ""
-        if len(ip_addr) > 0:
-            ports = f"Open ports for {socket.gethostbyname(target)} ({ip_addr})\n"
-        ports += "PORT    SERVICE"
-        for p in open_ports:
-            str_ports = str(p)
-            while len(str_ports) < 4:
-                str_ports += " "
-            str_ports += "\n" + str_ports + "    " + ports_and_services[int(str_ports)]  
-    else:
-        return open_ports        
-            
-get_open_ports("209.216.230.240", [440, 445])
+        sock.close()
+
+    # Modo Verbose
+    if verbose:
+        if hostname and not target.replace(".", "").isdigit():
+            result_str = f"Open ports for {target} ({ip})\n"
+        elif hostname:
+            result_str = f"Open ports for {hostname} ({ip})\n"
+        else:
+            result_str = f"Open ports for {ip}\n"
+
+        result_str += "PORT     SERVICE\n"
+        for port in open_ports:
+            service = ports_and_services.get(port, "unknown")
+            result_str += f"{port:<9}{service}\n"
+        return result_str.strip()
+
+    return open_ports
