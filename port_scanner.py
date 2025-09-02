@@ -1,47 +1,37 @@
 import socket
-from common_ports import *
+from common_ports import ports_and_services
 
-
-def get_open_ports(target, port_range, verbose=False):
-    url = ""
+def get_open_ports(target: str, port_range: list, verb=False):
+    
+    # Validating the given target
     try:
-        url = socket.gethostbyaddr(target)
-        url = url[0]
-    except:
-        pass
-    try:
-        host = socket.gethostbyname(target)
-    except:
-        try:
-            int(target.replace(".", ""))
+        ip_addr = socket.gethostbyaddr(target)
+    except socket.gaierror:
+        if target[0].isalpha():
             return "Error: Invalid IP address"
-        except:
+        else:
             return "Error: Invalid hostname"
-
-    port = port_range[0]
-    open_ports = ""
-    results = []
-    while port <= port_range[1]:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(0.5)
-        if s.connect_ex((host, port)):
-            pass
-        else:
-            results.append(port)
-        s.settimeout(None)
-        port += 1
-
-    if verbose == True:
-        if url == "":
-            open_ports += f"Open ports for {host}"
-        else:
-            open_ports += f"Open ports for {url} ({host})"
-        open_ports += "\nPORT     SERVICE"
-        for item in results:
-            open_ports += ("\n%-4s %-s %-s" %
-                           (str(item), "   ", ports_and_services[item]))
-
+    
+    open_ports = []
+    
+    # Searching for open ports
+    for port in range(port_range[0], port_range[1]):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Ipv4
+        if s.connect_ex((ip_addr, port)) == 0:
+            open_ports.append(port)
+        s.close    
+    
+    if verb == True:
+        ports = ""
+        if len(ip_addr) > 0:
+            ports = f"Open ports for {socket.gethostbyname(target)} ({ip_addr})\n"
+        ports += "PORT    SERVICE"
+        for p in open_ports:
+            str_ports = str(p)
+            while len(str_ports) < 4:
+                str_ports += " "
+            str_ports += "\n" + str_ports + "    " + ports_and_services[int(str_ports)]  
     else:
-        open_ports = results
-
-    return(open_ports)
+        return open_ports        
+            
+get_open_ports("209.216.230.240", [440, 445])
